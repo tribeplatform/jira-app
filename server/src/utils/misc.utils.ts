@@ -1,0 +1,9 @@
+export const slugify = (text: string, filler: string = '_'): string =>
+  text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, filler) // Replace spaces with -
+    .replace(/[^\u0100-\uFFFF\w\-]/g, filler) // Remove all non-word chars ( fix for UTF-8 chars )
+    .replace(/\-\-+/g, filler) // Replace multiple - with single -
+    .replace(/^-+/, '') // Trim - from start of text
+    .replace(/-+$/, '')

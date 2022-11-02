@@ -1,0 +1,21 @@
+{
+  "name": "jira",
+  "version": "0.0.1",
+  "description": "Jira app",
+  "main": "index.js",
+  "repository": "https://github.com/tribeplatform/jira.git",
+  "author": "Amir <amir@tribe.so>",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "start:dev": "concurrently \"yarn workspace server start:dev\" \"yarn workspace client start:dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^7.2.0",
+    "cross-env": "^7.0.3"
+  }
+}
