@@ -30,6 +30,10 @@ export class WebhookController {
           return this.webhookService.passChallenge(payload)
         case WEBHOOK_ACTION.APP_UNINSTALLED:
           await this.settingService.uninstall(payload.networkId)
+        case WEBHOOK_ACTION.INTERACTION:
+          await this.webhookService.handleInteraction(payload)
+        case WEBHOOK_ACTION.SHORTCUTS_STATES:
+          await this.settingService.getShortcutStates(payload)
       }
     } catch (err) {
       this.loggerService.error(err)

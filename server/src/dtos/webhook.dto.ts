@@ -1,5 +1,6 @@
 import { WEBHOOK_ACTION } from '../enums/webhookActions.enum'
 import { IsEnum, IsString, IsNotEmpty } from 'class-validator'
+import { PermissionContext } from '@tribeplatform/gql-client/types'
 
 export class WebhookDTO {
   @IsEnum(WEBHOOK_ACTION)
@@ -13,4 +14,9 @@ export class WebhookDTO {
   data: any
 
   settings: any
+
+  context?: PermissionContext
+  entityId?: string
+
+  currentSettings?: [any]
 }

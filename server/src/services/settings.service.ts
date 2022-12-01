@@ -12,6 +12,7 @@ import { concat, fromPairs } from 'lodash'
 import { LoggerService } from '@tribeplatform/nest-logger'
 import { AtlassianClientService } from './atlassian.service'
 import { CallbackId } from 'src/enums/callback.enum'
+import { WebhookResponse } from 'src/interfaces/webhook.interface'
 export const DEFAULT_FIELDS = [
   { name: 'id', label: 'Member ID', type: 'string' },
   { name: 'firstname', label: 'First name', type: 'string' },
@@ -103,6 +104,23 @@ export class SettingService {
       },
     }
   }
+  async handleInteraction(payload: WebhookDTO): Promise<WebhookResponse> {
+    return {
+      type: payload.type,
+      status: WebhookResponseStatus.SUCCEEDED,
+      data: payload.data,
+    }
+  }
+  async getShortcutStates(payload: WebhookDTO): Promise<WebhookResponse> {
+    const { entities } = payload.data
+
+    return {
+      type: payload.type,
+      status: WebhookResponseStatus.SUCCEEDED,
+      data: entities,
+    }
+  }
+
   public async findSettings(networkId: string): Promise<Atlassian> {
     return this.atlassianModel.findOne({ networkId }).lean()
   }
