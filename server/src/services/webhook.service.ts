@@ -1,8 +1,8 @@
 import { Injectable, Scope } from '@nestjs/common'
 import { WebhookDTO } from 'src/dtos/webhook.dto'
-import { WebhookResponseStatus } from 'src/enums/response.enum'
-import { WEBHOOK_ACTION } from 'src/enums/webhookActions.enum'
-import { WebhookResponse } from 'src/interfaces/webhook.interface'
+// import { WebhookResponseStatus } from 'src/enums/response.enum'
+// import { WEBHOOK_ACTION } from 'src/enums/webhookActions.enum'
+// import { WebhookResponse } from 'src/interfaces/webhook.interface'
 import { SettingService } from './settings.service'
 import { TribeClientService } from './tribe.service'
 import { LoggerService } from '@tribeplatform/nest-logger'
@@ -11,6 +11,10 @@ import { Atlassian } from 'src/schemas/atlassian.schema'
 import { Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { ShortcutKey } from 'src/enums/shortcut.enum'
+import { LiquidConvertor } from '@tribeplatform/slate-kit/convertors'
+import { CREATE_ISSUE_MODEAL } from 'src/templates/issues.block'
+import { WebhookResponse } from 'src/interfaces'
+import { ErrorCode, WebhookStatus, WebhookType } from 'src/enums'
 @Injectable({ scope: Scope.REQUEST })
 export class WebhookService {
   constructor(
@@ -25,8 +29,8 @@ export class WebhookService {
 
   public passChallenge(tribePayload: WebhookDTO): WebhookResponse {
     return {
-      type: WEBHOOK_ACTION.TEST,
-      status: WebhookResponseStatus.SUCCEEDED,
+      type: WebhookType.Test,
+      status: WebhookStatus.Succeeded,
       data: {
         challenge: tribePayload?.data?.challenge,
       },
@@ -50,18 +54,17 @@ export class WebhookService {
     } catch (err) {
       this.loggerService.error(err)
       return {
-        type: WEBHOOK_ACTION.SUBSCRIPTION,
-        status: WebhookResponseStatus.FAILED,
-        data: {
-          message: 'An error occurred while fetching settings',
-        },
+        type: WebhookType.Subscription,
+        status: WebhookStatus.Failed,
+        errorCode: ErrorCode.BackendError,
+        errorMessage: 'An error occurred while fetching settings',
       }
     }
     try {
       if (!settings || !settings.refreshToken) {
         return Promise.resolve({
           type: payload.type,
-          status: WebhookResponseStatus.SUCCEEDED,
+          status: WebhookStatus.Succeeded,
           data: payload.data,
         })
       }
@@ -70,14 +73,26 @@ export class WebhookService {
     }
     switch (payload?.data?.shortcutKey) {
       case ShortcutKey.CreateIssue:
-        // TODO: Create ticket
-        // Store both ticket and post id in DB
-        break
+        return this.showCreateIssueModal(payload, settings)
     }
 
     return {
       type: payload.type,
-      status: WebhookResponseStatus.SUCCEEDED,
+      status: WebhookStatus.Succeeded,
+      data: payload.data,
+    }
+  }
+  public async showCreateIssueModal(payload: WebhookDTO, settings: Atlassian): Promise<WebhookResponse> {
+    const convertor = new LiquidConvertor(CREATE_ISSUE_MODEAL)
+    const slate = await convertor.toSlate({
+      variables: {
+        settings,
+        settingsString: JSON.stringify(settings),
+      },
+    })
+    return {
+      type: payload.type,
+      status: WebhookStatus.Succeeded,
       data: payload.data,
     }
   }
@@ -88,18 +103,17 @@ export class WebhookService {
     } catch (err) {
       this.loggerService.error(err)
       return {
-        type: WEBHOOK_ACTION.SUBSCRIPTION,
-        status: WebhookResponseStatus.FAILED,
-        data: {
-          message: 'An error occurred while fetching settings',
-        },
+        type: WebhookType.Subscription,
+        status: WebhookStatus.Failed,
+        errorCode: ErrorCode.BackendError,
+        errorMessage: 'An error occurred while fetching settings',
       }
     }
     try {
       if (!settings || !settings.refreshToken) {
         return Promise.resolve({
           type: payload.type,
-          status: WebhookResponseStatus.SUCCEEDED,
+          status: WebhookStatus.Succeeded,
           data: payload.data,
         })
       }
@@ -109,7 +123,7 @@ export class WebhookService {
 
     return {
       type: payload.type,
-      status: WebhookResponseStatus.SUCCEEDED,
+      status: WebhookStatus.Succeeded,
       data: payload.data,
     }
   }

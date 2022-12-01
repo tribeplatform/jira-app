@@ -1,15 +1,14 @@
 import { Controller, Post, Body } from '@nestjs/common'
 import { WebhookService } from 'src/services/webhook.service'
 import { WebhookDTO } from 'src/dtos/webhook.dto'
-import { WEBHOOK_ACTION } from 'src/enums/webhookActions.enum'
-import { WebhookResponse } from 'src/interfaces/webhook.interface'
 import { SettingService } from 'src/services/settings.service'
 import { ConfigService } from '@nestjs/config'
 import { TribeClientService } from 'src/services/tribe.service'
 import { JwtService } from '@nestjs/jwt'
 import { LoadBlockDTO } from 'src/dtos/load-block.dto'
-import { WebhookResponseStatus } from 'src/enums/response.enum'
 import { LoggerService } from '@tribeplatform/nest-logger'
+import { WebhookStatus, WebhookType } from 'src/enums'
+import { WebhookResponse } from 'src/interfaces'
 
 @Controller('/api/settings')
 export class SettingsController {
@@ -27,7 +26,7 @@ export class SettingsController {
   @Post()
   async getSetting(@Body() payload: WebhookDTO): Promise<WebhookResponse> {
     this.loggerService.log(`Incoming getSetting request ${JSON.stringify(payload)}`)
-    if (payload.type === WEBHOOK_ACTION.TEST) return this.webhookService.passChallenge(payload)
+    if (payload.type === WebhookType.Test) return this.webhookService.passChallenge(payload)
     this.tribeService.setNetwork(payload.networkId)
     const network = await this.tribeService.getNetwork()
     const jwt = this.jwtService.sign({
@@ -42,14 +41,14 @@ export class SettingsController {
 
     try {
       switch (payload.type) {
-        case WEBHOOK_ACTION.LOAD_BLOCK:
+        case WebhookType.LoadBlock:
           return await this.settings.loadBlock(loadBlockPayload)
-        case WEBHOOK_ACTION.Callback:
-          return await this.settings.handleCallback(payload, loadBlockPayload)
+        case WebhookType.Callback:
+          return await this.settings.handleCallback(loadBlockPayload)
         default:
           return {
             type: payload.type,
-            status: WebhookResponseStatus.SUCCEEDED,
+            status: WebhookStatus.Succeeded,
             data: payload.data,
           }
       }

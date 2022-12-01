@@ -4,15 +4,14 @@ import { LiquidConvertor } from '@tribeplatform/slate-kit/convertors'
 import { Model } from 'mongoose'
 import { LoadBlockDTO } from 'src/dtos/load-block.dto'
 import { WebhookDTO } from 'src/dtos/webhook.dto'
-import { WebhookResponseStatus } from 'src/enums/response.enum'
-import { WEBHOOK_ACTION } from 'src/enums/webhookActions.enum'
 import { Atlassian } from 'src/schemas/atlassian.schema'
 import { COMPLETED_SETTINGS_BLOCK, EMPTY_SETTINGS_BLOCK } from 'src/templates/settings.block'
 import { concat, fromPairs } from 'lodash'
 import { LoggerService } from '@tribeplatform/nest-logger'
 import { AtlassianClientService } from './atlassian.service'
 import { CallbackId } from 'src/enums/callback.enum'
-import { WebhookResponse } from 'src/interfaces/webhook.interface'
+import { LoadBlockWebhookResponse, Webhook, WebhookResponse } from 'src/interfaces'
+import { ErrorCode, WebhookStatus, WebhookType } from 'src/enums'
 export const DEFAULT_FIELDS = [
   { name: 'id', label: 'Member ID', type: 'string' },
   { name: 'firstname', label: 'First name', type: 'string' },
@@ -46,14 +45,14 @@ export class SettingService {
     input: LoadBlockDTO,
     currentSettings: Atlassian = null,
     options: {
-      webhookType?: WEBHOOK_ACTION
-      status?: WebhookResponseStatus
+      webhookType?: WebhookType.LoadBlock | WebhookType.Callback
+      status?: WebhookStatus.Succeeded | WebhookStatus.Failed
       template?: string
     } = {
-      webhookType: WEBHOOK_ACTION.LOAD_BLOCK,
-      status: WebhookResponseStatus.SUCCEEDED,
+      webhookType: WebhookType.LoadBlock,
+      status: WebhookStatus.Succeeded,
     },
-  ) {
+  ): Promise<LoadBlockWebhookResponse> {
     const connectUrl = `${input.serverUrl}/api/auth?jwt=${input.jwt}&redirect=https://${input?.network?.domain}/manage/apps/salesforce`
     const settings = currentSettings || (await this.findSettings(input.network.id))
     let template: string = EMPTY_SETTINGS_BLOCK
@@ -71,43 +70,33 @@ export class SettingService {
         settingsString: JSON.stringify(settings),
       },
     })
-
+    if (options.status == WebhookStatus.Failed) {
+      return {
+        type: options.webhookType,
+        status: WebhookStatus.Failed,
+        errorCode: ErrorCode.BackendError,
+        errorMessage: 'Something went wrong',
+      }
+    }
     return {
-      type: options.webhookType || WEBHOOK_ACTION.LOAD_BLOCK,
-      status: options.status || WebhookResponseStatus.SUCCEEDED,
+      type: options.webhookType || WebhookType.LoadBlock,
+      status: WebhookStatus.Succeeded,
       data: {
         slate,
       },
     }
   }
 
-  async handleCallback(payload: WebhookDTO, input: LoadBlockDTO) {
-    const { callbackId } = payload.data as { callbackId?: CallbackId }
+  async handleCallback(input: LoadBlockDTO): Promise<LoadBlockWebhookResponse> {
     let settings: Atlassian = await this.findSettings(input.network.id)
-    let extraParams = {}
-    let template = null
-    let status = WebhookResponseStatus.SUCCEEDED
     this.loggerService.verbose(`settings ${JSON.stringify(settings)}`)
-
-    const block = await this.loadBlock(input, settings, {
-      webhookType: WEBHOOK_ACTION.Callback,
-      status,
-      template,
-    })
-
-    return {
-      ...block,
-      data: {
-        ...block.data,
-        action: 'REPLACE',
-        ...extraParams,
-      },
-    }
+    return this.loadBlock(input)
   }
+
   async handleInteraction(payload: WebhookDTO): Promise<WebhookResponse> {
     return {
       type: payload.type,
-      status: WebhookResponseStatus.SUCCEEDED,
+      status: WebhookStatus.Succeeded,
       data: payload.data,
     }
   }
@@ -116,7 +105,7 @@ export class SettingService {
 
     return {
       type: payload.type,
-      status: WebhookResponseStatus.SUCCEEDED,
+      status: WebhookStatus.Succeeded,
       data: entities,
     }
   }
