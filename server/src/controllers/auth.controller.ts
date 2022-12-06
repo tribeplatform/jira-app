@@ -42,6 +42,7 @@ export class AuthController {
         accessToken: req?.user?.accessToken,
         refreshToken: req?.user?.refreshToken,
         profile: req?.user.profile,
+        id: req?.user?.id,
       }),
     )
     this.settingService.saveSettings(req?.user.networkId, {
@@ -50,6 +51,7 @@ export class AuthController {
       accessToken: req?.user?.accessToken,
       url: req?.user?.url,
       refreshToken: req?.user?.refreshToken,
+      cloudId: req?.user?.id,
     })
     const { r: redirect } = JSON.parse(buff.toString('ascii')) as {
       r: string

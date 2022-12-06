@@ -10,34 +10,23 @@ import { concat, fromPairs } from 'lodash'
 import { LoggerService } from '@tribeplatform/nest-logger'
 import { AtlassianClientService } from './atlassian.service'
 import { CallbackId } from 'src/enums/callback.enum'
-import { LoadBlockWebhookResponse, Webhook, WebhookResponse } from 'src/interfaces'
+import {
+  InteractionWebhookResponse,
+  LoadBlockWebhookResponse,
+  ShortcutStatesWebhook,
+  ShortcutStatesWebhookResponse,
+  Webhook,
+  WebhookResponse,
+} from 'src/interfaces'
 import { ErrorCode, WebhookStatus, WebhookType } from 'src/enums'
-export const DEFAULT_FIELDS = [
-  { name: 'id', label: 'Member ID', type: 'string' },
-  { name: 'firstname', label: 'First name', type: 'string' },
-  { name: 'lastname', label: 'Last name', type: 'string' },
-  { name: 'tagline', label: 'Tagline', type: 'string' },
-  { name: 'createdAt', label: 'Membership date', type: 'date' },
-  { name: 'url', label: 'Profile URL', type: 'string' },
-]
-
-export const COMPUTED_FIELDS = [{ name: 'spaces', label: 'Spaces' }]
-
-export const DEFAULT_FIELDS_KEYS = DEFAULT_FIELDS.map(field => field.name)
-export const BASIC_FIELDS_KEYS = concat(DEFAULT_FIELDS, COMPUTED_FIELDS).map(field => field.name)
-export const BASIC_FIELDS_MAPPING = fromPairs(
-  concat(DEFAULT_FIELDS, COMPUTED_FIELDS).map((field: { name: string; label: string }) => [
-    field.name,
-    field.label,
-  ]),
-)
+import { Issue } from 'src/schemas/issue.schema'
 
 @Injectable({ scope: Scope.REQUEST })
 export class SettingService {
   constructor(
     @InjectModel(Atlassian.name) private atlassianModel: Model<Atlassian>,
+    @InjectModel(Issue.name) private issueModel: Model<Issue>,
     private readonly loggerService: LoggerService,
-    private readonly atlassianClientService: AtlassianClientService,
   ) {
     this.loggerService.setContext('SettingService')
   }
@@ -92,23 +81,18 @@ export class SettingService {
     this.loggerService.verbose(`settings ${JSON.stringify(settings)}`)
     return this.loadBlock(input)
   }
+  // async getShortcutStates(payload: ShortcutStatesWebhook): Promise<ShortcutStatesWebhookResponse> {
+  //   const { entities } = payload.data
 
-  async handleInteraction(payload: WebhookDTO): Promise<WebhookResponse> {
-    return {
-      type: payload.type,
-      status: WebhookStatus.Succeeded,
-      data: payload.data,
-    }
-  }
-  async getShortcutStates(payload: WebhookDTO): Promise<WebhookResponse> {
-    const { entities } = payload.data
-
-    return {
-      type: payload.type,
-      status: WebhookStatus.Succeeded,
-      data: entities,
-    }
-  }
+  //   return {
+  //     type: payload.type,
+  //     status: WebhookStatus.Succeeded,
+  //     data: {
+  //       states: null,
+  //     },
+  //     // data: entities,
+  //   }
+  // }
 
   public async findSettings(networkId: string): Promise<Atlassian> {
     return this.atlassianModel.findOne({ networkId }).lean()
@@ -118,5 +102,12 @@ export class SettingService {
   }
   public async saveSettings(networkId: string, settings: Atlassian) {
     return this.atlassianModel.findOneAndUpdate({ networkId }, settings, { upsert: true, new: true })
+  }
+  public async updateSettings(networkId: string, values: { [key: string]: any }) {
+    return this.atlassianModel.findOneAndUpdate({ networkId }, values, { upsert: true, new: true })
+  }
+
+  public async createIssue(issue: Issue) {
+    return this.issueModel.create(issue)
   }
 }

@@ -1,22 +1,47 @@
+import { CallbackId } from 'src/enums/callback.enum'
+
 export const CREATE_ISSUE_MODEAL = `
-<Card>
-  <Card.Content className="space-y-3">
-    <List spacing="md">
-      <Alert
-        status="success"
-        title="Setup completed"
-      >
-        <List spacing="sm">
-          You have successfully connected your community to Atlassian.
-          <Link variant="inherit" href="{{settings.url}}">
-            View Atlassian
-          </Link>
-          <Link variant="inherit" href="{{connectUrl}}">
-            Reconnect
-          </Link>
-        </List>
-      </Alert>
-    </List>
-  </Card.Content>
-</Card>    
+<Form callbackId="${CallbackId.CreateIssueFormSubmit}">
+  <List spacing="md">
+    {% if resources != blank %}
+      <Select
+        name="resourceId"
+        label="Site"
+        items='{{resources}}'
+        callbackId="resource-picker"
+      />
+    {% endif %}
+    {% if projects != blank %}
+      <Select
+        name="projectId"
+        label="Project"
+        items='{{projects}}'
+        callbackId="project-picker"
+      />
+    {% endif %}
+    {% if issueTypes != blank %}
+      <Select
+        name="issueType"
+        label="Issue Type"
+        items='{{issueTypes}}'
+        callbackId="issue-type-picker"
+      />
+    {% endif %}
+    {% if post != blank %}
+      <Input
+        name="summary"
+        label="Summary"
+        {% if post.title != blank%}value="{{post.title}}"{% endif %}
+      />
+      <Input
+        name="description"
+        label="Description (Optional)"
+        {% if post.shortContent != blank%}value="{{post.shortContent | strip_html}}"{% endif %}
+      />
+      <Button type="submit" variant="primary">
+        Create Issue
+      </Button>
+    {% endif %}
+  </List>
+</Form>
 `

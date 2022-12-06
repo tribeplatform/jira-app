@@ -7,4 +7,5 @@ export enum CallbackId {
   EMPTY = 'EMPTY',
   SHOW_MAPPING = 'SHOW_MAPPING',
   RESOLVE_ERRORS = 'RESOLVE_ERRORS',
+  CreateIssueFormSubmit = 'CreateIssueFormSubmit',
 }

@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt'
 import { LoadBlockDTO } from 'src/dtos/load-block.dto'
 import { LoggerService } from '@tribeplatform/nest-logger'
 import { WebhookStatus, WebhookType } from 'src/enums'
-import { WebhookResponse } from 'src/interfaces'
+import { Webhook, WebhookResponse } from 'src/interfaces'
 
 @Controller('/api/settings')
 export class SettingsController {
@@ -24,14 +24,14 @@ export class SettingsController {
   }
 
   @Post()
-  async getSetting(@Body() payload: WebhookDTO): Promise<WebhookResponse> {
+  async getSetting(@Body() payload: Webhook): Promise<WebhookResponse> {
     this.loggerService.log(`Incoming getSetting request ${JSON.stringify(payload)}`)
     if (payload.type === WebhookType.Test) return this.webhookService.passChallenge(payload)
     this.tribeService.setNetwork(payload.networkId)
     const network = await this.tribeService.getNetwork()
     const jwt = this.jwtService.sign({
       sub: network.id,
-      usr: payload?.data?.actorId,
+      usr: (payload?.data as any)?.actorId,
     })
     const loadBlockPayload: LoadBlockDTO = {
       serverUrl: this.configService.get('server.url'),
@@ -49,7 +49,7 @@ export class SettingsController {
           return {
             type: payload.type,
             status: WebhookStatus.Succeeded,
-            data: payload.data,
+            data: {},
           }
       }
     } catch (err) {

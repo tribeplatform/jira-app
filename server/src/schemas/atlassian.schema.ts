@@ -19,6 +19,12 @@ export class Atlassian {
 
   @Prop({ required: true })
   url: string
+
+  @Prop({ required: true })
+  cloudId?: string
+
+  @Prop({ type: Date, required: false })
+  expiresAt?: Date
 }
 
 export const AtlassianSchema = SchemaFactory.createForClass(Atlassian)

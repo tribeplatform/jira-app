@@ -50,12 +50,20 @@ export interface ShortcutStatesWebhook extends BaseWebhook {
   data: ShortcutStatesInput
 }
 
-export interface SubscriptionWebhook<T extends BaseEventObject = BaseEventObject>
-  extends BaseWebhook {
+export interface SubscriptionWebhook<T extends BaseEventObject = BaseEventObject> extends BaseWebhook {
   type: WebhookType.Subscription
   data: Event<T>
 }
 
+export interface LoadBlockWebhook extends BaseWebhook {
+  type: WebhookType.LoadBlock
+  data: any
+}
+
+export interface CallbackWebhook extends BaseWebhook {
+  type: WebhookType.Callback
+  data: any
+}
 export type Webhook =
   | TestWebhook
   | AppInstalledWebhook
@@ -64,3 +72,5 @@ export type Webhook =
   | InteractionWebhook
   | ShortcutStatesWebhook
   | SubscriptionWebhook
+  | LoadBlockWebhook
+  | CallbackWebhook

@@ -20,6 +20,7 @@ import { HttpModule } from '@nestjs/axios'
 import { LoggerModule } from '@tribeplatform/nest-logger'
 import { AuthController } from './controllers/auth.controller'
 import { AtlassianClientService } from './services/atlassian.service'
+import { Issue, IssueSchema } from './schemas/issue.schema'
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { AtlassianClientService } from './services/atlassian.service'
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([{ name: Atlassian.name, schema: AtlassianSchema }]),
+    MongooseModule.forFeature([{ name: Issue.name, schema: IssueSchema }]),
     HttpModule.register({
       timeout: 5000,
       maxRedirects: 5,

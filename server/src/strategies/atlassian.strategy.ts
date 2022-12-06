@@ -6,7 +6,7 @@ import { Injectable } from '@nestjs/common'
 import { LoggerService } from '@tribeplatform/nest-logger'
 import { SalesforcePassportAccessTokenDTO } from 'src/dtos/passport.dto'
 const Strategy = require('passport-atlassian-oauth2')
-const OAUTH_SCOPES = 'read:me write:jira-work offline_access'
+const OAUTH_SCOPES = 'read:me read:jira-work write:jira-work offline_access'
 @Injectable()
 export class AtlassianStrategy extends PassportStrategy(Strategy, 'atlassian') {
   constructor(private readonly configService: ConfigService, private readonly loggerService: LoggerService) {
@@ -32,12 +32,14 @@ export class AtlassianStrategy extends PassportStrategy(Strategy, 'atlassian') {
       m: string
       r: string
     }
+    this.loggerService.verbose(`profile: ${JSON.stringify(profile)}`)
     done(null, {
       networkId: state.n,
       memberId: state.m,
       accessToken,
       refreshToken,
       url: profile?.accessibleResources[0]?.url,
+      id: profile?.accessibleResources[0]?.id,
     })
   }
 }

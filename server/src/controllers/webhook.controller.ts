@@ -1,11 +1,9 @@
 import { Controller, Post, Body } from '@nestjs/common'
 import { WebhookService } from 'src/services/webhook.service'
 import { WebhookDTO } from 'src/dtos/webhook.dto'
-// import { WEBHOOK_ACTION } from 'src/enums/webhookActions.enum'
 import { SettingService } from 'src/services/settings.service'
-// import { WebhookResponseStatus } from 'src/enums/response.enum'
 import { LoggerService } from '@tribeplatform/nest-logger'
-import { WebhookResponse } from 'src/interfaces'
+import { InteractionWebhook, ShortcutStatesWebhook, Webhook, WebhookResponse } from 'src/interfaces'
 import { WebhookStatus, WebhookType } from 'src/enums'
 
 @Controller('/api/webhook')
@@ -19,7 +17,7 @@ export class WebhookController {
   }
 
   @Post()
-  async getWebhook(@Body() payload: WebhookDTO): Promise<WebhookResponse> {
+  async getWebhook(@Body() payload: Webhook): Promise<WebhookResponse> {
     this.loggerService.log(
       `Incoming getWebhook request with type ${payload?.type}: ${JSON.stringify(payload)}`,
     )
@@ -32,9 +30,9 @@ export class WebhookController {
         case WebhookType.AppInstalled:
           await this.settingService.uninstall(payload.networkId)
         case WebhookType.Interaction:
-          await this.webhookService.handleInteraction(payload)
-        case WebhookType.ShortcutsStates:
-          await this.settingService.getShortcutStates(payload)
+          return this.webhookService.handleInteraction(payload as InteractionWebhook)
+        // case WebhookType.ShortcutsStates:
+        //   await this.settingService.getShortcutStates(payload as ShortcutStatesWebhook)
       }
     } catch (err) {
       this.loggerService.error(err)
@@ -42,7 +40,7 @@ export class WebhookController {
     return {
       type: payload.type,
       status: WebhookStatus.Succeeded,
-      data: payload.data,
+      // data: payload.data,
     }
   }
 }
