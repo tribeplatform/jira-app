@@ -45,3 +45,19 @@ export const CREATE_ISSUE_MODEAL = `
   </List>
 </Form>
 `
+export const ISSUE_INFO_BLOCK = `
+<Card>
+  <Card.Content className="space-y-3">
+    <List spacing="md">
+      <Text value="Issues in Jira"></Text>
+      {% if issues.length %}
+        {% for issue in issues %}
+          <Text value="{{issue.issueId}}"></Text>
+        {% endfor %}
+      {% else %}
+        <Text value="No issues found"></Text>
+      {% endif %}
+    </List>
+  </Card.Content>
+</Card>
+`

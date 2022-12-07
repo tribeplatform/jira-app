@@ -12,7 +12,7 @@ import { Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { ShortcutKey } from 'src/enums/shortcut.enum'
 import { LiquidConvertor } from '@tribeplatform/slate-kit/convertors'
-import { CREATE_ISSUE_MODEAL } from 'src/templates/issues.block'
+import { CREATE_ISSUE_MODEAL, ISSUE_INFO_BLOCK } from 'src/templates/issues.block'
 import {
   CloseInteraction,
   Interaction,
@@ -30,11 +30,12 @@ import {
 import { ErrorCode, InteractionType, WebhookStatus, WebhookType } from 'src/enums'
 import { Network, ToastStatus } from '@tribeplatform/gql-client/types'
 import { randomUUID } from 'crypto'
-import { dynamicBlockKey } from 'src/enums/dynamic-block.enum'
+import { DynamicBlockKey } from 'src/enums/dynamic-block.enum'
 import { COMPLETED_SETTINGS_BLOCK, EMPTY_SETTINGS_BLOCK } from 'src/templates/settings.block'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { CallbackId } from 'src/enums/callback.enum'
+import { Issue } from 'src/schemas/issue.schema'
 @Injectable({ scope: Scope.REQUEST })
 export class WebhookService {
   constructor(
@@ -65,9 +66,66 @@ export class WebhookService {
     if (payload?.data?.shortcutKey) {
       return this.handleShortcut(payload)
     }
-    if (payload?.data?.dynamicBlockKey === dynamicBlockKey.Settings) {
-      return this.handleSettingsInteraction(payload)
+    switch (payload?.data?.dynamicBlockKey) {
+      case DynamicBlockKey.Settings:
+        return this.handleSettingsInteraction(payload)
+      case DynamicBlockKey.RelatedIssuesInfo:
+        return this.handleIssueInfoInteraction(payload)
     }
+    return {
+      type: WebhookType.Interaction,
+      status: WebhookStatus.Succeeded,
+      data: {
+        interactions: [],
+      },
+    }
+  }
+  public async handleIssueInfoInteraction(webhook: InteractionWebhook): Promise<InteractionWebhookResponse> {
+    this.loggerService.verbose(`Handling issue info: ${JSON.stringify(webhook)}`)
+    try {
+      const { entityId, networkId } = webhook
+      const { interactionId, preview } = webhook?.data
+      const settings = await this.settingsService.findSettings(networkId)
+      let issues: Issue[] = []
+      if (preview) {
+        issues = [
+          {
+            entityId,
+            networkId,
+            issueId: '1000',
+            url: settings.url,
+            resourceId: '1234567',
+          },
+        ]
+      } else {
+        issues = await this.settingsService.findIssues(networkId, entityId)
+        issues = await this.atlassianClientService.getIssues(
+          issues.map(issue => ({ id: issue.issueId, cloudId: issue.resourceId })),
+        )
+      }
+      const interactions: Interaction[] = []
+      if (issues.length) {
+        const convertor = new LiquidConvertor(ISSUE_INFO_BLOCK)
+        const slate = await convertor.toSlate({
+          variables: {
+            issues,
+          },
+        })
+        const issueModalInteraction: ShowInteraction = {
+          type: InteractionType.Show,
+          slate,
+          id: interactionId,
+        }
+        interactions.push(issueModalInteraction)
+      }
+      return {
+        type: WebhookType.Interaction,
+        status: WebhookStatus.Succeeded,
+        data: {
+          interactions,
+        },
+      }
+    } catch (err) {}
     return {
       type: WebhookType.Interaction,
       status: WebhookStatus.Succeeded,
@@ -329,6 +387,7 @@ export class WebhookService {
           url: issue.self,
           issueId: issue.id,
           entityId,
+          resourceId,
         })
         const closeInteraction: CloseInteraction = {
           type: InteractionType.Close,

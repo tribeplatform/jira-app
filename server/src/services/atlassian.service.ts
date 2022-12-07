@@ -120,4 +120,14 @@ export class AtlassianClientService {
     })
     return result
   }
+
+  public async getIssue(cloudId: string, id: string) {
+    const result = await this.request('GET', `/issue/${id}`, null, {
+      cloudId,
+    })
+    return result
+  }
+  public async getIssues(issues: { cloudId: string; id: string }[] = []) {
+    return Promise.all(issues.map(issue => this.getIssue(issue.cloudId, issue.id)))
+  }
 }

@@ -14,6 +14,9 @@ export class Issue {
   @Prop({ required: true })
   issueId: string
 
+  @Prop({ required: true })
+  resourceId: string
+
   @Prop({ required: false })
   url: string
 }

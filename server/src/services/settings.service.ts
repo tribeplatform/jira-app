@@ -107,7 +107,17 @@ export class SettingService {
     return this.atlassianModel.findOneAndUpdate({ networkId }, values, { upsert: true, new: true })
   }
 
-  public async createIssue(issue: Issue) {
+  public async createIssue(issue: Issue): Promise<Issue> {
     return this.issueModel.create(issue)
+  }
+  public async findIssues(networkId: string, entityId?: string): Promise<Issue[]> {
+    const query = { networkId }
+    if (entityId) {
+      query['entityId'] = entityId
+    }
+    return this.atlassianModel.findOne(query).lean()
+  }
+  public async findIssue(networkId: string, id: string): Promise<Issue> {
+    return this.atlassianModel.findOne({ networkId, _id: id }).lean()
   }
 }
