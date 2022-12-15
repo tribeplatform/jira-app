@@ -45,19 +45,31 @@ export const CREATE_ISSUE_MODEAL = `
   </List>
 </Form>
 `
+
+export const ISSUE_CREATED_MODAL = `
+<Container spacing="sm">
+  <Text value="You successfully created {{issue.key}}."></Text>
+  <Link href="{{issue.url}}" external>
+    View Issue
+  </Link>
+</Container>
+`
 export const ISSUE_INFO_BLOCK = `
 <Card>
+  <Card.Header size="sm" title="Related Jira issues"></Card.Header>
   <Card.Content className="space-y-3">
-    <List spacing="md">
-      <Text value="Issues in Jira"></Text>
+    <Container spacing="sm">
+      <Text value="These are issues created from this post."></Text>
       {% if issues.length %}
         {% for issue in issues %}
-          <Text value="{{issue.issueId}}"></Text>
+            <Link href="{{issue.url}}" external>
+            {{issue.key}} {{issue.summary}}
+            </Link>
         {% endfor %}
       {% else %}
         <Text value="No issues found"></Text>
       {% endif %}
-    </List>
+    </Container>
   </Card.Content>
 </Card>
 `

@@ -115,7 +115,7 @@ export class SettingService {
     if (entityId) {
       query['entityId'] = entityId
     }
-    return this.atlassianModel.findOne(query).lean()
+    return this.issueModel.find(query).lean()
   }
   public async findIssue(networkId: string, id: string): Promise<Issue> {
     return this.atlassianModel.findOne({ networkId, _id: id }).lean()

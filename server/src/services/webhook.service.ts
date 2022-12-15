@@ -12,7 +12,7 @@ import { Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { ShortcutKey } from 'src/enums/shortcut.enum'
 import { LiquidConvertor } from '@tribeplatform/slate-kit/convertors'
-import { CREATE_ISSUE_MODEAL, ISSUE_INFO_BLOCK } from 'src/templates/issues.block'
+import { CREATE_ISSUE_MODEAL, ISSUE_CREATED_MODAL, ISSUE_INFO_BLOCK } from 'src/templates/issues.block'
 import {
   CloseInteraction,
   Interaction,
@@ -86,6 +86,7 @@ export class WebhookService {
       const { entityId, networkId } = webhook
       const { interactionId, preview } = webhook?.data
       const settings = await this.settingsService.findSettings(networkId)
+      this.atlassianClientService.setSettings(settings)
       let issues: Issue[] = []
       if (preview) {
         issues = [
@@ -99,10 +100,20 @@ export class WebhookService {
         ]
       } else {
         issues = await this.settingsService.findIssues(networkId, entityId)
+        this.loggerService.verbose(`Issues in db for entity ${entityId}: ${JSON.stringify(issues)}`)
+
         issues = await this.atlassianClientService.getIssues(
-          issues.map(issue => ({ id: issue.issueId, cloudId: issue.resourceId })),
+          issues.map(issue => ({ id: issue.issueId, resourceId: issue.resourceId })),
         )
+        this.loggerService.verbose(`Issues from Jira ${JSON.stringify(issues)}`)
+        issues = (issues as any[]).map(issue => ({
+          url: `${settings?.url}/browse/${issue?.key}`,
+          issueId: issue?.id,
+          summary: issue?.fields?.summary,
+          key: issue?.key,
+        })) as any
       }
+      this.loggerService.verbose(`Issues ${JSON.stringify(issues)}`)
       const interactions: Interaction[] = []
       if (issues.length) {
         const convertor = new LiquidConvertor(ISSUE_INFO_BLOCK)
@@ -125,7 +136,9 @@ export class WebhookService {
           interactions,
         },
       }
-    } catch (err) {}
+    } catch (err) {
+      this.loggerService.error(err)
+    }
     return {
       type: WebhookType.Interaction,
       status: WebhookStatus.Succeeded,
@@ -336,7 +349,6 @@ export class WebhookService {
     webhook: InteractionWebhook,
     settings: Atlassian,
   ): Promise<InteractionWebhookResponse> {
-    const convertor = new LiquidConvertor(CREATE_ISSUE_MODEAL)
     const { interactionId, callbackId, inputs } = webhook?.data
     const { entityId, networkId } = webhook
     this.atlassianClientService.setSettings(settings)
@@ -389,24 +401,38 @@ export class WebhookService {
           entityId,
           resourceId,
         })
-        const closeInteraction: CloseInteraction = {
-          type: InteractionType.Close,
-          id: interactionId,
-        }
-        const openToastInteraction: OpenToastInteraction = {
-          type: InteractionType.OpenToast,
-          id: randomUUID(),
-          props: {
-            title: 'Issue created',
-            status: ToastStatus.Success,
-            description: 'Issue has been created successfully',
+        const convertor = new LiquidConvertor(ISSUE_CREATED_MODAL)
+        const slate = await convertor.toSlate({
+          variables: {
+            issue: {
+              url: issue.self,
+              key: issue.key,
+            },
           },
+        })
+        const showSuccessModal: ShowInteraction = {
+          id: interactionId,
+          type: InteractionType.Show,
+          slate,
         }
+        // const closeInteraction: CloseInteraction = {
+        //   type: InteractionType.Close,
+        //   id: interactionId,
+        // }
+        // const openToastInteraction: OpenToastInteraction = {
+        //   type: InteractionType.OpenToast,
+        //   id: randomUUID(),
+        //   props: {
+        //     title: 'Issue created',
+        //     status: ToastStatus.Success,
+        //     description: 'Issue has been created successfully',
+        //   },
+        // }
         return {
           type: WebhookType.Interaction,
           status: WebhookStatus.Succeeded,
           data: {
-            interactions: [closeInteraction, openToastInteraction],
+            interactions: [showSuccessModal],
           },
         }
       } catch (err) {
@@ -472,6 +498,7 @@ export class WebhookService {
         status: ToastStatus.Error,
       })
     }
+    const convertor = new LiquidConvertor(CREATE_ISSUE_MODEAL)
     const slate = await convertor.toSlate({
       variables: {
         ...params,
