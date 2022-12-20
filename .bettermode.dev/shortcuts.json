@@ -1,0 +1,12 @@
+[
+  {
+    "context": "POST",
+    "entityType": null,
+    "name": "Create Ticket",
+    "description": null,
+    "favicon": null,
+    "key": "create-issue",
+    "interactionUrl": null,
+    "states": null
+  }
+]

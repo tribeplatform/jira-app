@@ -1,0 +1,24 @@
+{
+  "defaults": [
+    {
+      "key": "settings",
+      "interactionUrl": null,
+      "contexts": [
+        "NETWORK"
+      ]
+    }
+  ],
+  "customs": [
+    {
+      "name": "Jira Issue",
+      "key": "related-issues-info",
+      "interactionUrl": null,
+      "contexts": [
+        "POST"
+      ],
+      "description": "Show Post Issue",
+      "favicon": null,
+      "image": null
+    }
+  ]
+}

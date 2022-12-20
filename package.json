@@ -12,7 +12,8 @@
     "client"
   ],
   "scripts": {
-    "start:dev": "concurrently \"yarn workspace server start:dev\" \"yarn workspace client start:dev\""
+    "start:dev": "concurrently \"yarn workspace server start:dev\" \"yarn workspace client start:dev\"",
+    "docker:dev:up": "docker-compose -f docker-compose.dev.yml -p bettermode-app-dev up -d"
   },
   "devDependencies": {
     "concurrently": "^7.2.0",
