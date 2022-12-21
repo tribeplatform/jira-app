@@ -391,9 +391,7 @@ export class WebhookService {
             ],
           }
         }
-        this.loggerService.log(`Creating issue: ${JSON.stringify(data)}`)
         const issue = await this.atlassianClientService.createIssue(resourceId, data)
-        this.loggerService.verbose(`Issue created: ${JSON.stringify(issue)}`)
         await this.settingsService.createIssue({
           networkId,
           url: issue.self,
@@ -408,6 +406,15 @@ export class WebhookService {
               url: issue.self,
               key: issue.key,
             },
+          },
+        })
+        await this.settingsService.saveUserPreferences(networkId, webhook.data.actorId, {
+          networkId,
+          memberId: webhook.data.actorId,
+          issueTemplate: {
+            resourceId,
+            projectId: inputs.projectId as string,
+            issueType: inputs.issueType as string,
           },
         })
         const showSuccessModal: ShowInteraction = {
@@ -437,9 +444,11 @@ export class WebhookService {
         }
       } catch (err) {
         this.loggerService.error(err)
+        let description = err.message
+        if (err?.code === 'ERR_BAD_REQUEST') description = 'We do not support this issue type at this moment.'
         return this.showOpenToastInteraction({
           title: 'Something went wrong',
-          description: err.message,
+          description,
           status: ToastStatus.Error,
         })
       }
@@ -452,12 +461,21 @@ export class WebhookService {
       )
 
       // comment this if you want to get projects and issue types for the first resource
+      if (availableResource?.length === 1) {
+        params.resourceId = availableResource[0].id
+      }
       const projects = await this.atlassianClientService.getProjects(availableResource[0].id)
       params.projects = JSON.stringify(projects.map(project => ({ value: project.id, text: project.name })))
+      if (projects?.length === 1) {
+        params.projectId = projects[0].id
+      }
       const issueTypes = await this.atlassianClientService.getIssueTypes(
         availableResource[0].id,
         projects[0].id,
       )
+      if (issueTypes?.length === 1) {
+        params.issueType = issueTypes[0].id
+      }
       params.issueTypes = JSON.stringify(
         issueTypes.map(project => ({ value: project.id, text: project.name })),
       )
@@ -489,7 +507,6 @@ export class WebhookService {
       //     url: post?.url,
       //   }
       // }
-      this.loggerService.verbose(`Params`, params)
     } catch (err) {
       this.loggerService.error(err)
       return this.showOpenToastInteraction({
@@ -498,6 +515,15 @@ export class WebhookService {
         status: ToastStatus.Error,
       })
     }
+    try {
+      const userPreferences = await this.settingsService.findUserPreferences(networkId, webhook.data.actorId)
+      if (userPreferences) {
+        params.resourceId = userPreferences?.issueTemplate?.resourceId || params.resourceId
+        params.projectId = userPreferences?.issueTemplate?.projectId || params.projctId
+        params.issueType = userPreferences?.issueTemplate?.issueType || params.projctId
+      }
+    } catch (err) {}
+    this.loggerService.verbose(`Params`, params)
     const convertor = new LiquidConvertor(CREATE_ISSUE_MODEAL)
     const slate = await convertor.toSlate({
       variables: {

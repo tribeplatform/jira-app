@@ -21,6 +21,7 @@ import { LoggerModule } from '@tribeplatform/nest-logger'
 import { AuthController } from './controllers/auth.controller'
 import { AtlassianClientService } from './services/atlassian.service'
 import { Issue, IssueSchema } from './schemas/issue.schema'
+import { UserPreferences, UserPreferencesSchema } from './schemas/userpref.schema'
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { Issue, IssueSchema } from './schemas/issue.schema'
     }),
     MongooseModule.forFeature([{ name: Atlassian.name, schema: AtlassianSchema }]),
     MongooseModule.forFeature([{ name: Issue.name, schema: IssueSchema }]),
+    MongooseModule.forFeature([{ name: UserPreferences.name, schema: UserPreferencesSchema }]),
     HttpModule.register({
       timeout: 5000,
       maxRedirects: 5,

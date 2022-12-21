@@ -1,7 +1,14 @@
 import { CallbackId } from 'src/enums/callback.enum'
 
 export const CREATE_ISSUE_MODEAL = `
-<Form callbackId="${CallbackId.CreateIssueFormSubmit}">
+{% capture defaultValues %}
+{
+  {% if resourceId != blank%}"resourceId":"{{resourceId}}",{% endif %}
+  {% if projectId != blank%}"projectId":"{{projectId}}",{% endif %}
+  {% if issueType != blank%}"issueType":"{{issueType}}"{% endif %}
+}
+{% endcapture %}
+<Form callbackId="${CallbackId.CreateIssueFormSubmit}" defaultValues='{{defaultValues}}'>
   <List spacing="md">
     {% if resources != blank %}
       <Select
@@ -9,6 +16,7 @@ export const CREATE_ISSUE_MODEAL = `
         label="Site"
         items='{{resources}}'
         callbackId="resource-picker"
+        {% if resourceId != blank%}value="{{resourceId}}"{% endif %}
       />
     {% endif %}
     {% if projects != blank %}
@@ -17,6 +25,7 @@ export const CREATE_ISSUE_MODEAL = `
         label="Project"
         items='{{projects}}'
         callbackId="project-picker"
+        {% if projectId != blank%}value="{{projectId}}"{% endif %}
       />
     {% endif %}
     {% if issueTypes != blank %}
@@ -25,6 +34,7 @@ export const CREATE_ISSUE_MODEAL = `
         label="Issue Type"
         items='{{issueTypes}}'
         callbackId="issue-type-picker"
+        {% if issueType != blank%}value="{{issueType}}"{% endif %}
       />
     {% endif %}
     {% if post != blank %}

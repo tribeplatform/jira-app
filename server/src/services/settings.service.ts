@@ -20,12 +20,14 @@ import {
 } from 'src/interfaces'
 import { ErrorCode, WebhookStatus, WebhookType } from 'src/enums'
 import { Issue } from 'src/schemas/issue.schema'
+import { UserPreferences } from 'src/schemas/userpref.schema'
 
 @Injectable({ scope: Scope.REQUEST })
 export class SettingService {
   constructor(
     @InjectModel(Atlassian.name) private atlassianModel: Model<Atlassian>,
     @InjectModel(Issue.name) private issueModel: Model<Issue>,
+    @InjectModel(UserPreferences.name) private userPreferencesModel: Model<UserPreferences>,
     private readonly loggerService: LoggerService,
   ) {
     this.loggerService.setContext('SettingService')
@@ -119,5 +121,15 @@ export class SettingService {
   }
   public async findIssue(networkId: string, id: string): Promise<Issue> {
     return this.atlassianModel.findOne({ networkId, _id: id }).lean()
+  }
+  public async findUserPreferences(networkId: string, id: string): Promise<UserPreferences> {
+    return this.userPreferencesModel.findOne({ networkId, memberId: id }).lean()
+  }
+
+  public async saveUserPreferences(networkId: string, memberId: string, settings: UserPreferences) {
+    return this.userPreferencesModel.findOneAndUpdate({ networkId, memberId }, settings, {
+      upsert: true,
+      new: true,
+    })
   }
 }
