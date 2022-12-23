@@ -125,7 +125,7 @@ export class WebhookService {
           interactions,
         },
       }
-    } catch (err) {}
+    } catch (err) { }
     return {
       type: WebhookType.Interaction,
       status: WebhookStatus.Succeeded,
@@ -168,9 +168,8 @@ export class WebhookService {
       sub: network.id,
       usr: actorId,
     })
-    const connectUrl = `${this.configService.get('server.url')}/api/auth?jwt=${jwt}&redirect=https://${
-      network?.domain
-    }/manage/apps/jira`
+    const connectUrl = `${this.configService.get('server.url')}/api/auth?jwt=${jwt}&redirect=https://${network?.domain
+      }/manage/apps/jira`
     try {
       settings = await this.settingsService.findSettings(networkId)
       // this.loggerService.verbose(`Settings: ${JSON.stringify(settings)}`)
@@ -382,7 +381,7 @@ export class WebhookService {
         this.loggerService.log(`Creating issue: ${JSON.stringify(data)}`)
         const issue = await this.atlassianClientService.createIssue(resourceId, data)
         this.loggerService.verbose(`Issue created: ${JSON.stringify(issue)}`)
-        await this.settingsService.createIssue({
+        const createdIssue = await this.settingsService.createIssue({
           networkId,
           url: issue.self,
           issueId: issue.id,
@@ -400,6 +399,11 @@ export class WebhookService {
             title: 'Issue created',
             status: ToastStatus.Success,
             description: 'Issue has been created successfully',
+            link: {
+              href: createdIssue.url,
+              text: 'open ticket',
+              enableCopy: true,
+            },
           },
         }
         return {

@@ -8,6 +8,11 @@ export interface ToastInteractionProps {
   status: ToastStatus
   title: string
   description?: string
+  link?: {
+    href: string
+    text: string
+    enableCopy?: boolean
+  }
 }
 
 export interface ModalInteractionProps {
