@@ -12,7 +12,7 @@ import { Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { ShortcutKey } from 'src/enums/shortcut.enum'
 import { LiquidConvertor } from '@tribeplatform/slate-kit/convertors'
-import { CREATE_ISSUE_MODEAL, ISSUE_INFO_BLOCK } from 'src/templates/issues.block'
+import { CREATE_ISSUE_MODEAL, ISSUE_CREATED_MODAL, ISSUE_INFO_BLOCK } from 'src/templates/issues.block'
 import {
   CloseInteraction,
   Interaction,
@@ -86,6 +86,7 @@ export class WebhookService {
       const { entityId, networkId } = webhook
       const { interactionId, preview } = webhook?.data
       const settings = await this.settingsService.findSettings(networkId)
+      this.atlassianClientService.setSettings(settings)
       let issues: Issue[] = []
       if (preview) {
         issues = [
@@ -99,10 +100,20 @@ export class WebhookService {
         ]
       } else {
         issues = await this.settingsService.findIssues(networkId, entityId)
+        this.loggerService.verbose(`Issues in db for entity ${entityId}: ${JSON.stringify(issues)}`)
+
         issues = await this.atlassianClientService.getIssues(
-          issues.map(issue => ({ id: issue.issueId, cloudId: issue.resourceId })),
+          issues.map(issue => ({ id: issue.issueId, resourceId: issue.resourceId })),
         )
+        this.loggerService.verbose(`Issues from Jira ${JSON.stringify(issues)}`)
+        issues = (issues as any[]).map(issue => ({
+          url: `${settings?.url}/browse/${issue?.key}`,
+          issueId: issue?.id,
+          summary: issue?.fields?.summary,
+          key: issue?.key,
+        })) as any
       }
+      this.loggerService.verbose(`Issues ${JSON.stringify(issues)}`)
       const interactions: Interaction[] = []
       if (issues.length) {
         const convertor = new LiquidConvertor(ISSUE_INFO_BLOCK)
@@ -125,7 +136,9 @@ export class WebhookService {
           interactions,
         },
       }
-    } catch (err) { }
+    } catch (err) {
+      this.loggerService.error(err)
+    }
     return {
       type: WebhookType.Interaction,
       status: WebhookStatus.Succeeded,
@@ -335,7 +348,6 @@ export class WebhookService {
     webhook: InteractionWebhook,
     settings: Atlassian,
   ): Promise<InteractionWebhookResponse> {
-    const convertor = new LiquidConvertor(CREATE_ISSUE_MODEAL)
     const { interactionId, callbackId, inputs } = webhook?.data
     const { entityId, networkId } = webhook
     this.atlassianClientService.setSettings(settings)
@@ -378,7 +390,6 @@ export class WebhookService {
             ],
           }
         }
-        this.loggerService.log(`Creating issue: ${JSON.stringify(data)}`)
         const issue = await this.atlassianClientService.createIssue(resourceId, data)
         this.loggerService.verbose(`Issue created: ${JSON.stringify(issue)}`)
         const createdIssue = await this.settingsService.createIssue({
@@ -388,10 +399,29 @@ export class WebhookService {
           entityId,
           resourceId,
         })
-        const closeInteraction: CloseInteraction = {
-          type: InteractionType.Close,
-          id: interactionId,
-        }
+        // const convertor = new LiquidConvertor(ISSUE_CREATED_MODAL)
+        // const slate = await convertor.toSlate({
+        //   variables: {
+        //     issue: {
+        //       url: issue.self,
+        //       key: issue.key,
+        //     },
+        //   },
+        // })
+        await this.settingsService.saveUserPreferences(networkId, webhook.data.actorId, {
+          networkId,
+          memberId: webhook.data.actorId,
+          issueTemplate: {
+            resourceId,
+            projectId: inputs.projectId as string,
+            issueType: inputs.issueType as string,
+          },
+        })
+        // const showSuccessModal: ShowInteraction = {
+        //   id: interactionId,
+        //   type: InteractionType.Show,
+        //   slate,
+        // }
         const openToastInteraction: OpenToastInteraction = {
           type: InteractionType.OpenToast,
           id: randomUUID(),
@@ -410,14 +440,16 @@ export class WebhookService {
           type: WebhookType.Interaction,
           status: WebhookStatus.Succeeded,
           data: {
-            interactions: [closeInteraction, openToastInteraction],
+            interactions: [openToastInteraction],
           },
         }
       } catch (err) {
         this.loggerService.error(err)
+        let description = err.message
+        if (err?.code === 'ERR_BAD_REQUEST') description = 'We do not support this issue type at this moment.'
         return this.showOpenToastInteraction({
           title: 'Something went wrong',
-          description: err.message,
+          description,
           status: ToastStatus.Error,
         })
       }
@@ -430,12 +462,21 @@ export class WebhookService {
       )
 
       // comment this if you want to get projects and issue types for the first resource
+      if (availableResource?.length === 1) {
+        params.resourceId = availableResource[0].id
+      }
       const projects = await this.atlassianClientService.getProjects(availableResource[0].id)
       params.projects = JSON.stringify(projects.map(project => ({ value: project.id, text: project.name })))
+      if (projects?.length === 1) {
+        params.projectId = projects[0].id
+      }
       const issueTypes = await this.atlassianClientService.getIssueTypes(
         availableResource[0].id,
         projects[0].id,
       )
+      if (issueTypes?.length === 1) {
+        params.issueType = issueTypes[0].id
+      }
       params.issueTypes = JSON.stringify(
         issueTypes.map(project => ({ value: project.id, text: project.name })),
       )
@@ -467,7 +508,6 @@ export class WebhookService {
       //     url: post?.url,
       //   }
       // }
-      this.loggerService.verbose(`Params`, params)
     } catch (err) {
       this.loggerService.error(err)
       return this.showOpenToastInteraction({
@@ -476,6 +516,16 @@ export class WebhookService {
         status: ToastStatus.Error,
       })
     }
+    try {
+      const userPreferences = await this.settingsService.findUserPreferences(networkId, webhook.data.actorId)
+      if (userPreferences) {
+        params.resourceId = userPreferences?.issueTemplate?.resourceId || params.resourceId
+        params.projectId = userPreferences?.issueTemplate?.projectId || params.projctId
+        params.issueType = userPreferences?.issueTemplate?.issueType || params.projctId
+      }
+    } catch (err) { }
+    this.loggerService.verbose(`Params`, params)
+    const convertor = new LiquidConvertor(CREATE_ISSUE_MODEAL)
     const slate = await convertor.toSlate({
       variables: {
         ...params,

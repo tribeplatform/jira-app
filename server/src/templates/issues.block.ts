@@ -1,7 +1,14 @@
 import { CallbackId } from 'src/enums/callback.enum'
 
 export const CREATE_ISSUE_MODEAL = `
-<Form callbackId="${CallbackId.CreateIssueFormSubmit}">
+{% capture defaultValues %}
+{
+  {% if resourceId != blank%}"resourceId":"{{resourceId}}",{% endif %}
+  {% if projectId != blank%}"projectId":"{{projectId}}",{% endif %}
+  {% if issueType != blank%}"issueType":"{{issueType}}"{% endif %}
+}
+{% endcapture %}
+<Form callbackId="${CallbackId.CreateIssueFormSubmit}" defaultValues='{{defaultValues}}'>
   <List spacing="md">
     {% if resources != blank %}
       <Select
@@ -9,6 +16,7 @@ export const CREATE_ISSUE_MODEAL = `
         label="Site"
         items='{{resources}}'
         callbackId="resource-picker"
+        {% if resourceId != blank%}value="{{resourceId}}"{% endif %}
       />
     {% endif %}
     {% if projects != blank %}
@@ -17,6 +25,7 @@ export const CREATE_ISSUE_MODEAL = `
         label="Project"
         items='{{projects}}'
         callbackId="project-picker"
+        {% if projectId != blank%}value="{{projectId}}"{% endif %}
       />
     {% endif %}
     {% if issueTypes != blank %}
@@ -25,6 +34,7 @@ export const CREATE_ISSUE_MODEAL = `
         label="Issue Type"
         items='{{issueTypes}}'
         callbackId="issue-type-picker"
+        {% if issueType != blank%}value="{{issueType}}"{% endif %}
       />
     {% endif %}
     {% if post != blank %}
@@ -45,19 +55,31 @@ export const CREATE_ISSUE_MODEAL = `
   </List>
 </Form>
 `
+
+export const ISSUE_CREATED_MODAL = `
+<Container spacing="sm">
+  <Text value="You successfully created {{issue.key}}."></Text>
+  <Link href="{{issue.url}}" external>
+    View Issue
+  </Link>
+</Container>
+`
 export const ISSUE_INFO_BLOCK = `
 <Card>
+  <Card.Header size="sm" title="Related Jira issues"></Card.Header>
   <Card.Content className="space-y-3">
-    <List spacing="md">
-      <Text value="Issues in Jira"></Text>
+    <Container spacing="sm">
+      <Text value="These are issues created from this post."></Text>
       {% if issues.length %}
         {% for issue in issues %}
-          <Text value="{{issue.issueId}}"></Text>
+            <Link href="{{issue.url}}" external>
+            {{issue.key}} {{issue.summary}}
+            </Link>
         {% endfor %}
       {% else %}
         <Text value="No issues found"></Text>
       {% endif %}
-    </List>
+    </Container>
   </Card.Content>
 </Card>
 `

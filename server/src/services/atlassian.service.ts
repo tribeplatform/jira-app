@@ -16,7 +16,9 @@ export class AtlassianClientService {
     private readonly loggerService: LoggerService,
     private readonly settingsService: SettingService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    this.loggerService.setContext(AtlassianClientService.name)
+  }
 
   public setNetwork(networkId: string) {
     this.networkId = networkId
@@ -127,7 +129,8 @@ export class AtlassianClientService {
     })
     return result
   }
-  public async getIssues(issues: { cloudId: string; id: string }[] = []) {
-    return Promise.all(issues.map(issue => this.getIssue(issue.cloudId, issue.id)))
+  public async getIssues(issues: { resourceId: string; id: string }[] = []) {
+    this.loggerService.verbose(`issues: ${JSON.stringify(issues)}`)
+    return Promise.all(issues.map(issue => this.getIssue(issue.resourceId, issue.id)))
   }
 }
